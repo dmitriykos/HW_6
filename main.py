@@ -5,8 +5,9 @@ import os
 from pathlib import Path
 from normalize import normalize
 
-
 # створення цільових тек
+
+
 def create_target_folders(path_folder: Path) -> dict:
     # створення категорій з файла catalog.json
     def create_categories(path_folder: str) -> dict:
@@ -34,14 +35,15 @@ def create_target_folders(path_folder: Path) -> dict:
 #     return list_files
 
 
-def arc(path_folder: Path):                # розархівування
-    for file in path_folder.glob("**/*"):
-        if file.suffix in [".zip", ".tar", ".xztar", ".gztar", "bztar"]:
-            shutil.unpack_archive(file, path_folder / "archives")
-    return Path
+# def arc(path_folder: Path):                # розархівування
+#     for file in path_folder.glob("**/*"):
+#         if file.suffix in [".zip", ".tar", ".xztar", ".gztar", "bztar"]:
+#             shutil.unpack_archive(file, path_folder / "archives")
+#     return Path
 
 
-def delete_folders(path_folder: Path):              # видалимо порожні папки
+def delete_folders(path_folder: Path):    # видалимо порожні папки
+    path_folder = Path(path_folder)
     for file in path_folder.glob("**/*"):
         if file.is_dir():
             if len(os.listdir(file)) == 0:
@@ -58,15 +60,19 @@ def sort_files(path_folder: Path) -> str:  # отримаємо список ц�
     # тестова тека
 
     global count
-    for file in path_folder.glob("**/*"):
+    for file in work_dir.glob("**/*"):
 
         normalize_name = normalize(file.name)
         count += 1
 
         # ітеруємо словник і переносимо файли в нові папки
         for new_folder, list_extension in cat.items():
-            for extension in list_extension:
-                if file.suffix == extension:
+            try:
+                if str(file.suffix) in cat["archives"]:
+                    shutil.unpack_archive(
+                        file, work_dir / "archives" / file.stem)
+                    file.replace(work_dir / "archives" / file.name)
+                elif file.suffix in list_extension:
                     try:
                         shutil.move(file, work_dir /
                                     new_folder / normalize_name)
@@ -74,16 +80,21 @@ def sort_files(path_folder: Path) -> str:  # отримаємо список ц�
                         new_name = f"_{count}.".join(
                             normalize_name.split("."))
                         shutil.move(file, work_dir / new_folder / new_name)
-                else:
-                    if file.is_file():
-                        shutil.move(file, work_dir / "Others")
+                elif file.suffix not in cat and file.is_file():
+                    shutil.move(file, work_dir / "Others")
+            except Exception as err:
+                # print(f"[ERROR]: {err}")
+                continue
 
 
 # головна функція
 def main() -> str:
     try:
-        sort_files(sys.argv[1])
-        delete_folders(sys.argv[1])
+        folder = sys.argv[1]
+        sort_files(folder)
+        delete_folders(folder)
+        print(f"File in {folder} were sorted successfully!")
+        print(f"All files: {count}")
 
     except IndexError:
         print("No parameter")
